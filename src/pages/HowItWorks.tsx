@@ -141,9 +141,6 @@ const HowItWorks = () => {
       {/* Hero */}
       <section className="pt-32 pb-16 px-4">
         <div className="container mx-auto text-center max-w-3xl">
-          <div className="inline-block bg-secondary px-4 py-2 rounded-full text-sm font-medium text-secondary-foreground mb-6">
-            Simple. Transparent. Effective.
-          </div>
           <h1 className="text-5xl md:text-6xl font-bold mb-6">
             How <span className="text-primary">AfriHustle</span> Works
           </h1>

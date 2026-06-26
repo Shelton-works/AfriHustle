@@ -45,9 +45,6 @@ const Index = () => {
         <div className="container mx-auto">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
-              <div className="inline-block bg-secondary px-4 py-2 rounded-full text-sm font-medium text-secondary-foreground">
-                Your Gateway to Opportunity
-              </div>
               <h1 className="text-5xl md:text-6xl font-bold leading-tight">
                 Connect with
                 <span className="block text-primary">Real Opportunities</span>
