@@ -22,6 +22,20 @@ export const signUp = async (email: string, password: string, fullName: string, 
 
   // Create user role
   if (data.user) {
+    // Ensure the profile exists in public.profiles before referencing it
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: data.user.id,
+        email: data.user.email || email,
+        full_name: fullName
+      });
+
+    if (profileError) {
+      console.error("Error ensuring profile exists:", profileError);
+      return { error: profileError };
+    }
+
     const { error: roleError } = await supabase
       .from('user_roles')
       .insert({ user_id: data.user.id, role });
