@@ -20,56 +20,93 @@ export const signUp = async (email: string, password: string, fullName: string, 
   if (error) return { error };
   if (!data.user) return { error: new Error("Failed to create user") };
 
-  // Create user role
-  if (data.user) {
-    // Ensure the profile exists in public.profiles before referencing it
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: data.user.id,
-        email: data.user.email || email,
-        full_name: fullName
-      });
+  // Create user role and profiles client-side ONLY if we have an active session (email confirmation is disabled).
+  // If email confirmation is enabled, data.session is null and we must rely on the database trigger.
+  if (data.user && data.session) {
+    try {
+      // 1. Ensure the profile exists in public.profiles before referencing it
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', data.user.id)
+        .maybeSingle();
 
-    if (profileError) {
-      console.error("Error ensuring profile exists:", profileError);
-      return { error: profileError };
-    }
+      if (!existingProfile) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email: data.user.email || email,
+            full_name: fullName
+          });
 
-    const { error: roleError } = await supabase
-      .from('user_roles')
-      .insert({ user_id: data.user.id, role });
-
-    if (roleError) {
-      console.error("Error creating role:", roleError);
-      return { error: roleError };
-    }
-
-    // Create student or company profile
-    if (role === 'student') {
-      const { error: profileError } = await supabase
-        .from('student_profiles')
-        .insert({
-          user_id: data.user.id,
-          university: additionalData?.university || null,
-          major: additionalData?.major || null
-        });
-
-      if (profileError) {
-        console.error("Error creating student profile:", profileError);
+        if (profileError) {
+          console.error("Error creating profile:", profileError);
+        }
       }
-    } else if (role === 'company') {
-      const { error: profileError } = await supabase
-        .from('company_profiles')
-        .insert({
-          user_id: data.user.id,
-          company_name: additionalData?.company_name || fullName,
-          industry: additionalData?.industry || null
-        });
 
-      if (profileError) {
-        console.error("Error creating company profile:", profileError);
+      // 2. Create user role
+      const { data: existingRole } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', data.user.id)
+        .eq('role', role)
+        .maybeSingle();
+
+      if (!existingRole) {
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({ user_id: data.user.id, role });
+
+        if (roleError) {
+          console.error("Error creating role:", roleError);
+        }
       }
+
+      // 3. Create student or company profile
+      if (role === 'student') {
+        const { data: existingStudent } = await supabase
+          .from('student_profiles')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
+        if (!existingStudent) {
+          const { error: profileError } = await supabase
+            .from('student_profiles')
+            .insert({
+              user_id: data.user.id,
+              university: additionalData?.university || null,
+              major: additionalData?.major || null
+            });
+
+          if (profileError) {
+            console.error("Error creating student profile:", profileError);
+          }
+        }
+      } else if (role === 'company') {
+        const { data: existingCompany } = await supabase
+          .from('company_profiles')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
+        if (!existingCompany) {
+          const { error: profileError } = await supabase
+            .from('company_profiles')
+            .insert({
+              user_id: data.user.id,
+              company_name: additionalData?.company_name || fullName,
+              industry: additionalData?.industry || null
+            });
+
+          if (profileError) {
+            console.error("Error creating company profile:", profileError);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Gracefully handled signup post-creation error:", err);
     }
   }
 
